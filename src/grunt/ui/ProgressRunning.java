@@ -97,9 +97,7 @@ public class ProgressRunning extends JFrame
 		lblLog.setBackground(new Color(255, 215, 0));
 		lblLog.setForeground(UX.c);
 
-		String[] say = new String[] {"Connection Ongoing!", "Link START!"};
-
-		label = new JLabel(say[(int) (Math.random() * (say.length - 1))]);
+		label = new JLabel("Hang On");
 		label.setHorizontalAlignment(SwingConstants.CENTER);
 		label.setForeground(UX.c);
 		label.setFont(new Font("Yu Gothic UI Light", Font.PLAIN, 32));
