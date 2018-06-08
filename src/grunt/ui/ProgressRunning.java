@@ -57,6 +57,9 @@ public class ProgressRunning extends JFrame
 					lblDownloading.setForeground(UX.c);
 					lblLog.setForeground(UX.c);
 					label.setForeground(UX.c);
+					setBackground(UX.c.darker().darker().darker());
+					contentPane.setBackground(UX.c.darker().darker().darker());
+					getContentPane().setBackground(UX.c.darker().darker().darker());
 				}
 			}
 		}.start();
@@ -88,13 +91,15 @@ public class ProgressRunning extends JFrame
 		lblDownloading.setHorizontalAlignment(SwingConstants.CENTER);
 		lblDownloading.setFont(new Font("Yu Gothic UI Light", Font.PLAIN, 26));
 
-		lblLog = new JLabel("Log?");
+		lblLog = new JLabel("Launching client process.");
 		lblLog.setHorizontalAlignment(SwingConstants.CENTER);
 		lblLog.setFont(new Font("Yu Gothic UI Light", Font.PLAIN, 12));
 		lblLog.setBackground(new Color(255, 215, 0));
 		lblLog.setForeground(UX.c);
 
-		label = new JLabel("0%");
+		String[] say = new String[] {"Connection Ongoing!", "Link START!"};
+
+		label = new JLabel(say[(int) (Math.random() * (say.length - 1))]);
 		label.setHorizontalAlignment(SwingConstants.CENTER);
 		label.setForeground(UX.c);
 		label.setFont(new Font("Yu Gothic UI Light", Font.PLAIN, 32));

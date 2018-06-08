@@ -15,6 +15,7 @@ public class CircularProgressBar extends JPanel
 	private double prgValue = 0;
 	private double lvalue = 0;
 	private double dist = 0;
+	private double tangle = 0;
 
 	public CircularProgressBar()
 	{
@@ -32,6 +33,7 @@ public class CircularProgressBar extends JPanel
 						try
 						{
 							Thread.sleep(6);
+
 							continue;
 						}
 
@@ -56,6 +58,12 @@ public class CircularProgressBar extends JPanel
 							lvalue += (prgValue - lvalue) / 40;
 							dist = Math.abs(prgValue - lvalue);
 						}
+						tangle += 0.1245 * (dist * 4) + 0.06;
+
+						if(tangle > 360)
+						{
+							tangle = 0;
+						}
 
 						Thread.sleep(6);
 					}
@@ -73,7 +81,6 @@ public class CircularProgressBar extends JPanel
 	protected void paintComponent(Graphics g)
 	{
 		Graphics2D g2 = (Graphics2D) g;
-
 		setForeground(Color.DARK_GRAY);
 		setBackground(Color.DARK_GRAY);
 		g2.setColor(Color.DARK_GRAY);
@@ -86,7 +93,7 @@ public class CircularProgressBar extends JPanel
 
 		try
 		{
-			g2.setStroke(new BasicStroke(1000f + (float) ((dist) * 0.8)));
+			g2.setStroke(new BasicStroke(1000f + (float) ((dist) * 10.8)));
 		}
 
 		catch(Exception e)
@@ -98,13 +105,12 @@ public class CircularProgressBar extends JPanel
 
 		if(prgValue <= MAX_PROGRESS_AMOUNT)
 		{
-
 			int angle = -(int) (((float) (lvalue) / MAX_PROGRESS_AMOUNT) * 360);
 			UX.c(Color.getHSBColor((float) (0.25 + (float) (angle / (double) 180)), 1, 1));
 			g.setColor(UX.c);
 			try
 			{
-				g2.setStroke(new BasicStroke(1f + (float) ((dist * 1.4))));
+				g2.setStroke(new BasicStroke(1f + (float) ((dist * 2.4))));
 			}
 
 			catch(Exception e)
@@ -112,7 +118,7 @@ public class CircularProgressBar extends JPanel
 				e.printStackTrace();
 			}
 
-			g.drawArc(10, 10, getWidth() - 20, getHeight() - 20, 90, angle);
+			g.drawArc(10, 10, getWidth() - 20, getHeight() - 20, (int) tangle, angle);
 		}
 	}
 

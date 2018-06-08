@@ -213,10 +213,12 @@ public class JavaFinder
 				{
 					preferred = java;
 				}
+
 				if(java.is64bits)
 				{
 					java64.add(java);
 				}
+
 				else
 				{
 					java32.add(java);
@@ -234,6 +236,7 @@ public class JavaFinder
 					}
 				}
 			}
+
 			if(java32.size() > 0)
 			{
 				for(JavaInfo aJava32 : java32)
@@ -251,9 +254,9 @@ public class JavaFinder
 		{
 			return preferred;
 		}
+
 		else
 		{
-
 			return null;
 		}
 	}

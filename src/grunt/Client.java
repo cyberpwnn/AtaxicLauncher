@@ -32,6 +32,7 @@ import grunt.ui.ProgressGameCrash;
 import grunt.ui.ProgressLogin;
 import grunt.ui.ProgressRunning;
 import grunt.ui.ProgressStart;
+import grunt.ui.UX;
 import grunt.util.DLQ;
 import grunt.util.GList;
 import grunt.util.GMap;
@@ -78,7 +79,7 @@ public class Client
 		fbin = new File(fbase, "bin");
 		fnatives = new File(fbin, "natives");
 		flibs = new File(fbin, "libs");
-		q = new DLQ(16);
+		q = new DLQ(6);
 		fobjects.mkdirs();
 		fasm.mkdirs();
 		fnatives.mkdirs();
@@ -99,15 +100,24 @@ public class Client
 
 	public void logIn()
 	{
-		auth = new ClientAuthentication(fauth);
-
-		if(auth.authenticate().equals(AuthenticationResponse.SUCCESS))
+		try
 		{
-			onLoggedIn();
+			auth = new ClientAuthentication(fauth);
+
+			if(auth.authenticate().equals(AuthenticationResponse.SUCCESS))
+			{
+				onLoggedIn();
+			}
+
+			else
+			{
+				loginWithPassword();
+			}
 		}
 
-		else
+		catch(ClassNotFoundException | IOException e)
 		{
+			e.printStackTrace();
 			loginWithPassword();
 		}
 	}
@@ -156,12 +166,17 @@ public class Client
 		GList<String> arguments = new GList<String>();
 
 		main.mkdirs();
-		arguments.add(getDefaultJavaPath());
-		arguments.add("-Xmx6G");
-		arguments.add("-Xms1M");
-		arguments.add("-XX:+UseConcMarkSweepGC");
-		arguments.add("-XX:+CMSIncrementalMode");
-		arguments.add("-XX:-UseAdaptiveSizePolicy");
+		arguments.add(getDefaultJavaPath().replaceAll("jre", "jdk").replace("jre", "jdk"));
+		arguments.add("-Xmx5555M");
+		arguments.add("-Xms5555M");
+
+		arguments.add("-XX:+UnlockExperimentalVMOptions");
+		arguments.add("-XX:+UseG1GC");
+		arguments.add("-XX:G1NewSizePercent=20");
+		arguments.add("-XX:G1ReservePercent=20");
+		arguments.add("-XX:MaxGCPauseMillis=50");
+		arguments.add("-XX:G1HeapRegionSize=32M");
+
 		arguments.add("-Djava.library.path=" + natives.getAbsolutePath());
 		arguments.add("-Dorg.lwjgl.librarypath=" + natives.getAbsolutePath());
 		arguments.add("-Dnet.java.games.input.librarypath=" + natives.getAbsolutePath());
@@ -187,10 +202,6 @@ public class Client
 
 		cpb.deleteCharAt(0);
 		arguments.add(cpb.toString());
-		arguments.add("-XX:+UseParNewGC");
-		arguments.add("-XX:+UseConcMarkSweepGC");
-		arguments.add("-XX:+CICompilerCountPerCPU");
-		arguments.add("-XX:+TieredCompilation");
 		arguments.add("-Dlog4j.skipJansi=true");
 		arguments.add(mainClassForge);
 		arguments.add("--username");
@@ -248,15 +259,17 @@ public class Client
 			se.start();
 			String line;
 			int count = 0;
-			int vec = 114;
+			int vec = 172;
 
 			while((line = bu.readLine()) != null)
 			{
-				if(line.contains("LWJGL Version") || (int) (((double) count / (double) vec) * 25) > 100)
+				if(ru.isVisible() && (int) (((double) count / (double) vec) * 1.125) > 100)
 				{
 					System.out.println("[GRUNT]: CLOSE UI");
 					System.out.println("COUNT: " + count);
+					Thread.sleep(8500);
 					ru.setVisible(false);
+					System.exit(0);
 				}
 
 				String km = "";
@@ -273,8 +286,8 @@ public class Client
 
 				ProgressRunning.lblLog.setText(km);
 				System.out.println("[CLIENT]: " + km);
-				ProgressRunning.panel.setProgress((int) (((double) count / (double) vec) * 25));
-				ProgressRunning.label.setText(F.pc(((double) count / (double) vec), 0));
+				ProgressRunning.panel.setProgress((int) ((int) (((double) count / (double) vec)) * 1.125));
+				ProgressRunning.label.setText(F.pc((((double) count / (double) vec)) / 100D, 0));
 				count++;
 			}
 
@@ -353,13 +366,23 @@ public class Client
 		{
 			javaVersion = JavaFinder.parseJavaVersion();
 
+			try
+			{
+				Thread.sleep(10000);
+			}
+
+			catch(InterruptedException e)
+			{
+				e.printStackTrace();
+			}
+
 			if(javaVersion != null && javaVersion.path != null)
 			{
 				return javaVersion.path.replace(".exe", "w.exe");
 			}
 		}
 
-		return System.getProperty("java.home") + "/bin/java";
+		return (System.getProperty("java.home") + "/bin/java").replaceAll("jre", "jdk");
 	}
 
 	private void downloadGame() throws IOException
@@ -370,6 +393,7 @@ public class Client
 		File cli = new File(fbin, "client.jar");
 		File pmda = new File(fasm, "patch.mda");
 		File patchFolder = new File(fasm, "patches");
+		UX.rgb = true;
 		patchFolder.mkdirs();
 		ps = new ProgressStart();
 		q.q(URLX.VERSION_META, vm);
@@ -596,7 +620,6 @@ public class Client
 			q.q(artifactRemapping.get(i), nf);
 		}
 
-
 		Squawk.setup(patchFolder, fgame);
 
 		int cpa = patchNumber;
@@ -676,7 +699,16 @@ public class Client
 			@Override
 			public boolean onSubmit(String username, String password)
 			{
-				auth = new ClientAuthentication(fauth, username, password);
+				try
+				{
+					auth = new ClientAuthentication(fauth, username, password);
+				}
+
+				catch(Exception e)
+				{
+					e.printStackTrace();
+				}
+
 				AuthenticationResponse r = auth.authenticate();
 
 				if(r.equals(AuthenticationResponse.SUCCESS))
