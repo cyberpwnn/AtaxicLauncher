@@ -49,7 +49,7 @@ public abstract class ProgressLogin extends JFrame
 				{
 					try
 					{
-						Thread.sleep(10);
+						Thread.sleep(Client.config.getBoolean("throttle-launcher") ? 15 : 6);
 					}
 
 					catch(InterruptedException e)
@@ -86,8 +86,8 @@ public abstract class ProgressLogin extends JFrame
 		getContentPane().add(contentPane);
 		setLocation((int) Client.x, (int) Client.y);
 		panel = new CircularProgressBar();
-		panel.setBackground(Color.DARK_GRAY);
-		panel.setForeground(Color.DARK_GRAY);
+		panel.setBackground(new Color(0, 0, 0));
+		panel.setForeground(new Color(0, 0, 0));
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
 		gl_contentPane.setHorizontalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addComponent(panel, GroupLayout.DEFAULT_SIZE, 310, Short.MAX_VALUE));
 		gl_contentPane.setVerticalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addComponent(panel, GroupLayout.DEFAULT_SIZE, 293, Short.MAX_VALUE));
@@ -101,7 +101,7 @@ public abstract class ProgressLogin extends JFrame
 		UX.c(null);
 		txtE = new JTextField();
 		txtE.setForeground(UX.c);
-		txtE.setBackground(Color.DARK_GRAY);
+		txtE.setBackground(new Color(0, 0, 0));
 		txtE.setHorizontalAlignment(SwingConstants.CENTER);
 		txtE.setFont(new Font("Yu Gothic Light", Font.BOLD, 18));
 		txtE.setColumns(10);
@@ -114,7 +114,7 @@ public abstract class ProgressLogin extends JFrame
 
 		txtP = new JPasswordField();
 		txtP.setForeground(UX.c);
-		txtP.setBackground(Color.DARK_GRAY);
+		txtP.setBackground(new Color(0, 0, 0));
 		txtP.setHorizontalAlignment(SwingConstants.CENTER);
 		txtP.setFont(new Font("Yu Gothic Light", Font.BOLD, 18));
 		txtP.setColumns(10);

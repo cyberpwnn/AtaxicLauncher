@@ -41,7 +41,7 @@ public class ProgressRunning extends JFrame
 				{
 					try
 					{
-						Thread.sleep(10);
+						Thread.sleep(Client.config.getBoolean("throttle-launcher") ? 15 : 6);
 					}
 
 					catch(InterruptedException e)
@@ -64,13 +64,13 @@ public class ProgressRunning extends JFrame
 			}
 		}.start();
 
-		getContentPane().setBackground(Color.DARK_GRAY);
+		getContentPane().setBackground(new Color(0, 0, 0));
 		setForeground(Color.WHITE);
-		setBackground(Color.DARK_GRAY);
+		setBackground(new Color(0, 0, 0));
 		setBounds(100, 100, 320, 303);
 		contentPane = new JPanel();
 		contentPane.setForeground(Color.WHITE);
-		contentPane.setBackground(Color.DARK_GRAY);
+		contentPane.setBackground(new Color(0, 0, 0));
 		contentPane.setBorder(null);
 		setUndecorated(true);
 		setAlwaysOnTop(true);
@@ -79,8 +79,8 @@ public class ProgressRunning extends JFrame
 		setLocation((int) Client.x, (int) Client.y);
 
 		panel = new CircularProgressBar();
-		panel.setForeground(Color.DARK_GRAY);
-		panel.setBackground(Color.DARK_GRAY);
+		panel.setForeground(new Color(0, 0, 0));
+		panel.setBackground(new Color(0, 0, 0));
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
 		gl_contentPane.setHorizontalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addGroup(gl_contentPane.createSequentialGroup().addComponent(panel, GroupLayout.PREFERRED_SIZE, 320, GroupLayout.PREFERRED_SIZE).addContainerGap(258, Short.MAX_VALUE)));
 		gl_contentPane.setVerticalGroup(gl_contentPane.createParallelGroup(Alignment.LEADING).addComponent(panel, GroupLayout.DEFAULT_SIZE, 303, Short.MAX_VALUE));

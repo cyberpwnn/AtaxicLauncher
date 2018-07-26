@@ -58,14 +58,6 @@
       <url>http://nexus.volmit.com/content/repositories/volmit</url>
     </repository>
   </repositories>
-  <dependencies>
-    <dependency>
-      <groupId>com.volmit</groupId>
-      <artifactId>Dumpster</artifactId>
-      <version>1.0</version>
-      <scope>compile</scope>
-    </dependency>
-  </dependencies>
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>

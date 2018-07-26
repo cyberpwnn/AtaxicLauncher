@@ -22,6 +22,7 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 import com.google.gson.GsonBuilder;
 import com.mojang.authlib.properties.PropertyMap;
+import com.volmit.dumpster.M;
 
 import grunt.ClientAuthentication.AuthenticationResponse;
 import grunt.json.F;
@@ -55,6 +56,8 @@ public class Client
 	private File fobjects;
 	private File fauth;
 	private File fgame;
+	private File fconf;
+	public static JSONObject config;
 	private ClientAuthentication auth;
 	private ProgressLogin login;
 	public static ProgressStart ps;
@@ -64,6 +67,7 @@ public class Client
 	private DLQ q;
 	private static GMap<String, String> artifactRemapping;
 	public static GList<String> lines = new GList<String>();
+	private long lms = M.ms();
 
 	public Client()
 	{
@@ -79,18 +83,59 @@ public class Client
 		fbin = new File(fbase, "bin");
 		fnatives = new File(fbin, "natives");
 		flibs = new File(fbin, "libs");
-		q = new DLQ(6);
+		fconf = new File(fasm, "config.json");
+		q = new DLQ(3);
 		fobjects.mkdirs();
 		fasm.mkdirs();
 		fnatives.mkdirs();
 		flibs.mkdirs();
 		fgame.mkdirs();
+
+		try
+		{
+			loadConfig();
+		}
+
+		catch(IOException e)
+		{
+			e.printStackTrace();
+			fconf.delete();
+			System.exit(1);
+		}
+
 		artifactRemapping = buildArtifactRemapping(new GMap<String, String>());
+	}
+
+	private void loadConfig() throws IOException
+	{
+		if(!fconf.exists())
+		{
+			fconf.getParentFile().mkdirs();
+			JSONObject ja = new JSONObject();
+			ja.put("memory-max", "6g");
+			ja.put("throttle-launcher", true);
+			PrintWriter pw = new PrintWriter(fconf);
+			pw.println(ja.toString(4));
+			pw.close();
+		}
+
+		BufferedReader bu = new BufferedReader(new FileReader(fconf));
+		String c = "";
+		String l = null;
+
+		while((l = bu.readLine()) != null)
+		{
+			c += l;
+		}
+
+		bu.close();
+		JSONObject ja = new JSONObject(c);
+		config = ja;
 	}
 
 	private GMap<String, String> buildArtifactRemapping(GMap<String, String> map)
 	{
-		map.put("net.minecraftforge:forge:1.12.2-14.23.4.2707", "https://files.minecraftforge.net/maven/net/minecraftforge/forge/1.12.2-14.23.4.2707/forge-1.12.2-14.23.4.2707-universal.jar");
+		map.put("net.minecraftforge:forge:1.12.2-" + URLX.FORGE_VERSION + "", "https://files.minecraftforge.net/maven/net/minecraftforge/forge/1.12.2-" + URLX.FORGE_VERSION + "/forge-1.12.2-" + URLX.FORGE_VERSION + "-universal.jar");
 		map.put("org.scala-lang:scala-xml_2.11:1.0.2", "http://central.maven.org/maven2/org/scala-lang/modules/scala-xml_2.11/1.0.2/scala-xml_2.11-1.0.2.jar");
 		map.put("org.scala-lang:scala-swing_2.11:1.0.1", "http://central.maven.org/maven2/org/scala-lang/modules/scala-swing_2.11/1.0.1/scala-swing_2.11-1.0.1.jar");
 		map.put("org.scala-lang:scala-parser-combinators_2.11:1.0.1", "http://central.maven.org/maven2/org/scala-lang/modules/scala-parser-combinators_2.11/1.0.1/scala-parser-combinators_2.11-1.0.1.jar");
@@ -167,16 +212,15 @@ public class Client
 
 		main.mkdirs();
 		arguments.add(getDefaultJavaPath().replaceAll("jre", "jdk").replace("jre", "jdk"));
-		arguments.add("-Xmx5555M");
-		arguments.add("-Xms5555M");
-
+		arguments.add("-Xmx" + config.getString("memory-max"));
+		arguments.add("-Xms" + config.getString("memory-max"));
 		arguments.add("-XX:+UnlockExperimentalVMOptions");
 		arguments.add("-XX:+UseG1GC");
 		arguments.add("-XX:G1NewSizePercent=20");
 		arguments.add("-XX:G1ReservePercent=20");
 		arguments.add("-XX:MaxGCPauseMillis=50");
 		arguments.add("-XX:G1HeapRegionSize=32M");
-
+		arguments.add("-XX:+DisableExplicitGC");
 		arguments.add("-Djava.library.path=" + natives.getAbsolutePath());
 		arguments.add("-Dorg.lwjgl.librarypath=" + natives.getAbsolutePath());
 		arguments.add("-Dnet.java.games.input.librarypath=" + natives.getAbsolutePath());
@@ -263,11 +307,11 @@ public class Client
 
 			while((line = bu.readLine()) != null)
 			{
-				if(ru.isVisible() && (int) (((double) count / (double) vec) * 1.125) > 100)
+				if(ru.isVisible() && (int) ((((double) count / (double) vec) * 1.125) * 1.15) > 100 || line.contains("Mystcraft Start-Up Error Checking Completed"))
 				{
 					System.out.println("[GRUNT]: CLOSE UI");
 					System.out.println("COUNT: " + count);
-					Thread.sleep(8500);
+					Thread.sleep(10500);
 					ru.setVisible(false);
 					System.exit(0);
 				}
@@ -284,10 +328,14 @@ public class Client
 					km = line;
 				}
 
-				ProgressRunning.lblLog.setText(km);
-				System.out.println("[CLIENT]: " + km);
-				ProgressRunning.panel.setProgress((int) ((int) (((double) count / (double) vec)) * 1.125));
-				ProgressRunning.label.setText(F.pc((((double) count / (double) vec)) / 100D, 0));
+				if(M.ms() - lms > 500)
+				{
+					ProgressRunning.lblLog.setText(km);
+					ProgressRunning.panel.setProgress((int) ((int) ((((double) count / (double) vec)) * 1.125) * 1.15));
+					ProgressRunning.label.setText(F.pc((int) ((int) ((((double) count / (double) vec)) * 1.125) * 1.15) / 100D, 0));
+					lms = M.ms();
+				}
+
 				count++;
 			}
 
@@ -366,16 +414,6 @@ public class Client
 		{
 			javaVersion = JavaFinder.parseJavaVersion();
 
-			try
-			{
-				Thread.sleep(10000);
-			}
-
-			catch(InterruptedException e)
-			{
-				e.printStackTrace();
-			}
-
 			if(javaVersion != null && javaVersion.path != null)
 			{
 				return javaVersion.path.replace(".exe", "w.exe");
@@ -397,9 +435,14 @@ public class Client
 		patchFolder.mkdirs();
 		ps = new ProgressStart();
 		q.q(URLX.VERSION_META, vm);
+		int opn = -1337;
 
 		if(pmda.exists())
 		{
+			BufferedReader bu = new BufferedReader(new FileReader(pmda));
+			String line = bu.readLine();
+			opn = Integer.valueOf(line.split(":")[1].trim());
+			bu.close();
 			pmda.delete();
 		}
 
@@ -409,6 +452,33 @@ public class Client
 		String line = bu.readLine();
 		bu.close();
 		int patchNumber = Integer.valueOf(line.split(":")[1].trim());
+
+		System.out.println("Current Patch Number: " + patchNumber);
+		System.out.println("Old Patch Number: " + opn);
+
+		if(opn > patchNumber && opn >= 0)
+		{
+			System.out.println("Old patches detected, rebasing...");
+			if(patchFolder.exists())
+			{
+				for(File i : patchFolder.listFiles())
+				{
+					System.out.println("Deleted old patch " + i.getName());
+					i.delete();
+				}
+			}
+
+			if(fgame.exists())
+			{
+				delete(fgame);
+			}
+
+			if(fassets.exists())
+			{
+				delete(fassets);
+			}
+		}
+
 		JSONObject jvm = readJSON(vm);
 		writeJSON(jvm, vm);
 		JSONArray ja = jvm.getJSONArray("versions");
@@ -898,5 +968,19 @@ public class Client
 	public DLQ getQ()
 	{
 		return q;
+	}
+
+	private void delete(File f)
+	{
+		if(f.exists() && f.isDirectory())
+		{
+			for(File i : f.listFiles())
+			{
+				delete(i);
+			}
+		}
+
+		System.out.println("Deleting " + f.getPath());
+		f.delete();
 	}
 }
