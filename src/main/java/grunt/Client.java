@@ -78,7 +78,7 @@ public class Client
 		fasm = new File(fbase, "client");
 		fauth = new File(fasm, "auth.ksg");
 		fgame = new File(fbase, "game");
-		fassets = new File(fgame, "assets");
+		fassets = new File(fgame, ".minecraft/assets");
 		fobjects = new File(fassets, "objects");
 		fbin = new File(fbase, "bin");
 		fnatives = new File(fbin, "natives");
@@ -174,6 +174,24 @@ public class Client
 		try
 		{
 			downloadGame();
+
+			if(!new File(fgame, "mods").exists() || new File(fgame, "mods").listFiles().length == 0)
+			{
+				System.out.println("Mods Folder " + new File(fgame, "mods").getAbsolutePath());
+
+				System.out.println("Apply Patches...");
+				System.out.println("Patching Game...");
+
+				GList<Integer> m = new GList<>();
+
+				for(int i = 0; i < Squawk.getLatestPatch(); i++)
+				{
+					m.add(i + 1);
+				}
+
+				Squawk.applyAllPatches(m);
+			}
+
 			int code = launchGame();
 			System.out.println("Process exited with error code " + code);
 
@@ -198,29 +216,76 @@ public class Client
 
 	private int launchGame() throws IOException, InterruptedException
 	{
+		long memory = Platform.MEMORY.PHYSICAL.getTotalMemory();
+		String target = "potato";
+
+		if(memory > 8 * Math.pow(1024, 3))
+		{
+			target = "ultra";
+		}
+
 		System.out.println("Launching Game....");
 		ru = new ProgressRunning();
 		ru.setVisible(true);
-
-		File main = fgame;
+		ProgressRunning.label.setText(target.equals("ultra") ? "Ultra" : "Potato" + " Mode");
+		File main = new File(fgame, ".minecraft");
+		GList<String> a = new GList<>();
+		a.add(getDefaultJavaPath().replaceAll("jre", "jdk").replace("jre", "jdk"));
+		a.add("-jar");
+		a.add("Firefly.jar");
+		a.add("vdi.js");
+		a.add(target);
+		ProcessBuilder b = new ProcessBuilder(a);
+		b.directory(fgame);
+		b.start().waitFor();
+		Thread.sleep(3000);
 		File libs = flibs;
 		File natives = fnatives;
 		String mainClassForge = "net.minecraft.launchwrapper.Launch";
 		String properties = new GsonBuilder().registerTypeAdapter(PropertyMap.class, new OldPropertyMapSerializer()).create().toJson(auth.getProfileSettings());
 		List<File> classpath = getLibClasspath(libs);
 		GList<String> arguments = new GList<String>();
+		File instanceConfig = new File(fgame, "instance.cfg");
+		String jvmArgs = "";
+		String maxMem = "";
+		String minMem = "";
+		String m = null;
+		BufferedReader br = new BufferedReader(new FileReader(instanceConfig));
 
+		while((m = br.readLine()) != null)
+		{
+			if(m.startsWith("JvmArgs="))
+			{
+				jvmArgs = m.substring(8).trim();
+			}
+
+			if(m.startsWith("MaxMemAlloc="))
+			{
+				maxMem = m.substring(12);
+			}
+
+			if(m.startsWith("MinMemAlloc="))
+			{
+				minMem = m.substring(12);
+			}
+		}
+
+		br.close();
 		main.mkdirs();
 		arguments.add(getDefaultJavaPath().replaceAll("jre", "jdk").replace("jre", "jdk"));
-		arguments.add("-Xmx" + config.getString("memory-max"));
-		arguments.add("-Xms" + config.getString("memory-max"));
-		arguments.add("-XX:+UnlockExperimentalVMOptions");
-		arguments.add("-XX:+UseG1GC");
-		arguments.add("-XX:G1NewSizePercent=20");
-		arguments.add("-XX:G1ReservePercent=20");
-		arguments.add("-XX:MaxGCPauseMillis=50");
-		arguments.add("-XX:G1HeapRegionSize=32M");
-		arguments.add("-XX:+DisableExplicitGC");
+		arguments.add("-Xmx" + maxMem + "M");
+		arguments.add("-Xms" + minMem + "M");
+
+		for(String i : jvmArgs.split(" "))
+		{
+			if(i.trim().isEmpty())
+			{
+				continue;
+			}
+
+			arguments.add(i);
+		}
+
 		arguments.add("-Djava.library.path=" + natives.getAbsolutePath());
 		arguments.add("-Dorg.lwjgl.librarypath=" + natives.getAbsolutePath());
 		arguments.add("-Dnet.java.games.input.librarypath=" + natives.getAbsolutePath());
@@ -244,6 +309,9 @@ public class Client
 			cpb.append(f.getAbsolutePath());
 		}
 
+		new File(fassets, "indexes").mkdirs();
+		Files.copy(new File(fassets, "asset-index.json"), new File(fassets, "indexes/1.12.json"));
+
 		cpb.deleteCharAt(0);
 		arguments.add(cpb.toString());
 		arguments.add("-Dlog4j.skipJansi=true");
@@ -255,9 +323,9 @@ public class Client
 		arguments.add("--gameDir");
 		arguments.add(main.getAbsolutePath());
 		arguments.add("--assetsDir");
-		arguments.add("/assets");
+		arguments.add(fassets.getAbsolutePath());
 		arguments.add("--assetsIndex");
-		arguments.add("/assets/asset-index.json");
+		arguments.add("1.12");
 		arguments.add("--uuid");
 		arguments.add(auth.getUuid());
 		arguments.add("--accessToken");
@@ -293,6 +361,7 @@ public class Client
 
 		builder.directory(main);
 		System.out.println("==========================================================================");
+		System.out.println("Min " + minMem + ", Max: " + maxMem + ", Args: " + jvmArgs);
 		System.out.println("Launching Client!");
 
 		try
@@ -307,7 +376,8 @@ public class Client
 
 			while((line = bu.readLine()) != null)
 			{
-				if(ru.isVisible() && (int) ((((double) count / (double) vec) * 1.125) * 1.15) > 100 || line.contains("Mystcraft Start-Up Error Checking Completed"))
+				double pct = (((((((double) count / (double) vec) * 1.125) * 1.15) / 2D) * 1.42) * 1.33333333333) * 0.9;
+				if(ru.isVisible() && (int) pct > 100 || line.contains("Mystcraft Start-Up Error Checking Completed"))
 				{
 					System.out.println("[GRUNT]: CLOSE UI");
 					System.out.println("COUNT: " + count);
@@ -328,11 +398,11 @@ public class Client
 					km = line;
 				}
 
-				if(M.ms() - lms > 500)
+				if(M.ms() - lms > 50)
 				{
 					ProgressRunning.lblLog.setText(km);
-					ProgressRunning.panel.setProgress((int) ((int) ((((double) count / (double) vec)) * 1.125) * 1.15));
-					ProgressRunning.label.setText(F.pc((int) ((int) ((((double) count / (double) vec)) * 1.125) * 1.15) / 100D, 0));
+					ProgressRunning.panel.setProgress((int) ((int) (pct)));
+					ProgressRunning.label.setText(F.pc((int) ((int) ((pct))) / 100D, 0));
 					lms = M.ms();
 				}
 
@@ -447,6 +517,8 @@ public class Client
 		}
 
 		q.q(URLX.PDS_META, pmda);
+		q.q("https://libraries.minecraft.net/com/mojang/text2speech/1.10.3/text2speech-1.10.3-natives-windows.jar", new File(flibs, "com/mojang/text2speech/1.10.3/text2speech-1.10.3-natives-windows.jar"));
+		q.q("https://libraries.minecraft.net/com/mojang/text2speech/1.10.3/text2speech-1.10.3-natives-linux.jar", new File(flibs, "com/mojang/text2speech/1.10.3/text2speech-1.10.3-natives-linux.jar"));
 		q.flush();
 		BufferedReader bu = new BufferedReader(new FileReader(pmda));
 		String line = bu.readLine();
@@ -519,7 +591,7 @@ public class Client
 			long size = asset.getLong("size");
 			String hash = asset.getString("hash");
 			String hashRoot = hash.substring(0, 2);
-			File fr = new File(fgame, "resourcepacks");
+			File fr = new File(fgame, ".minecraft/resourcepacks");
 			File fx = new File(fr, "main");
 			File f = new File(fx, key);
 			File d = new File(fobjects, hashRoot);
@@ -720,6 +792,17 @@ public class Client
 		{
 			System.out.println("Patching Game...");
 			Squawk.applyAllPatches(missed);
+		}
+
+		try
+		{
+			extractNatives(new File(flibs, "com/mojang/text2speech/1.10.3/text2speech-1.10.3-natives-windows.jar"), fnatives);
+			extractNatives(new File(flibs, "com/mojang/text2speech/1.10.3/text2speech-1.10.3-natives-linux.jar"), fnatives);
+		}
+
+		catch(Throwable e)
+		{
+
 		}
 
 		cleanup();
